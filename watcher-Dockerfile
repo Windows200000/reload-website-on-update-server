@@ -1,0 +1,22 @@
+FROM rust:1.88-alpine AS builder
+WORKDIR /app
+RUN apk add --no-cache musl-dev
+COPY Cargo.toml Cargo.toml
+COPY src src
+RUN cargo build --release
+
+FROM alpine:3.20
+RUN adduser -D -H -s /sbin/nologin appuser
+WORKDIR /app
+COPY --from=builder /app/target/release/rust-watcher /app/rust-watcher
+USER appuser
+ENV WATCH_DIR=/site \
+    HOST=0.0.0.0 \
+    PORT=8765 \
+    EXTENSIONS=.html,.css,.js \
+    POLL_INTERVAL=0.5 \
+    MAX_CLIENTS=100 \
+    CLIENT_QUEUE_SIZE=8 \
+    SSE_HEARTBEAT=15
+EXPOSE 8765
+CMD ["/app/rust-watcher"]
